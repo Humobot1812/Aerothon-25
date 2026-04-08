@@ -1,72 +1,213 @@
-# Autonomous Drone Survey and Target Detection
+# 🚁 Autonomous Drone Survey & Target Detection
 
-This repository contains an object-oriented refactoring of a ROS 2 and DroneKit-based autonomous drone mission. The system performs the following key functionalities:
+An advanced **ROS 2 + DroneKit-based autonomous drone system** designed for **survey missions, real-time object detection, and intelligent navigation**.
 
-* **Real-time Object Detection**: Uses YOLOv4-tiny (via OpenCV DNN) in a ROS 2 node to detect two classes:
-
-  1. **Targets**: When a target is detected, the drone diverts, descends, performs precise centering using a PID controller, hovers, and then resumes the survey.
-  2. **Hotspots**: Records unique hotspot locations (GPS) during the mission.
-
-* **Pixel-to-GPS Conversion**: Converts image pixel coordinates to GPS latitude and longitude, accounting for drone altitude and heading.
-
-* **Survey Mission Planning**: Generates a zigzag (boustrophedon) survey pattern within a user-defined polygon, shrinks that polygon by an inset, and uploads waypoints to the vehicle.
-
-* **Dynamic Diversion**: Monitors for detected targets during the survey. Upon detection:
-
-  1. Switch to GUIDED mode and travel to the target location at survey altitude.
-  2. Descend to a lower altitude for vision-based PID centering.
-  3. Execute a PID-based centering loop to align the drone over the target based on pixel error.
-  4. Hover for a fixed duration, ascend back to survey altitude, and mark the target as serviced.
-  5. Resume the survey mission in AUTO mode.
-
-* **Hotspot Recording**: Uses Haversine distance to identify unique hotspots (< 0.8 m tolerance) and stores them with incremental IDs.
-
-* **Thread-Safe Shared State**: Utilizes Python `threading.Lock` to safely share data (pixel locations, GPS lists, hotspot dictionary) between the detection thread (ROS 2) and the mission thread (DroneKit).
+This project integrates **computer vision, mission planning, and control systems** to enable a drone to autonomously survey an area, detect targets, and dynamically respond in real time.
 
 ---
 
-## Repository Structure
+## ✨ Key Features
+
+### 🎯 Real-Time Object Detection
+
+* Uses **YOLOv4-tiny (OpenCV DNN)** for efficient onboard inference
+* Detects two object classes:
+
+  * **Targets**
+
+    * Drone diverts from mission
+    * Descends and performs PID-based centering
+    * Hovers and resumes mission
+  * **Hotspots**
+
+    * GPS locations recorded during mission
+
+---
+
+### 🌍 Pixel-to-GPS Conversion
+
+* Converts image pixel coordinates → real-world GPS coordinates
+* Accounts for:
+
+  * Drone altitude
+  * Camera field of view (FOV)
+  * Drone heading
+
+---
+
+### 🗺️ Autonomous Survey Planning
+
+* Generates **zigzag (boustrophedon) coverage path**
+* Supports:
+
+  * Custom polygon-based geofencing
+  * Polygon shrinking (inset)
+  * Waypoint generation and upload
+
+---
+
+### 🔁 Dynamic Target Diversion
+
+During mission execution:
+
+1. Switch to **GUIDED mode**
+2. Navigate to detected target
+3. Descend to low altitude
+4. Perform **PID-based visual centering**
+5. Hover for inspection
+6. Ascend and return to mission
+7. Resume **AUTO mode**
+
+---
+
+### 🔥 Smart Hotspot Recording
+
+* Uses **Haversine distance filtering**
+* Avoids duplicate detections (< 0.8 m threshold)
+* Stores:
+
+  * Unique ID
+  * GPS coordinates
+
+---
+
+### 🔒 Thread-Safe Architecture
+
+* Uses `threading.Lock` for safe shared data access
+* Synchronizes:
+
+  * Detection thread (ROS 2)
+  * Mission control thread (DroneKit)
+
+---
+
+## 📁 Project Structure
 
 ```
 ├── README.md
 ├── requirements.txt
 ├── src/
-│   ├── pid_controller.py
-│   ├── coordinates.py
-│   ├── detector_node.py
-│   ├── mission_manager.py
-│   └── main.py
+│   ├── pid_controller.py      # Stable PID controller for centering
+│   ├── coordinates.py         # Pixel-to-GPS + Haversine utilities
+│   ├── detector_node.py       # YOLOv4-tiny ROS 2 detection node
+│   ├── mission_manager.py     # Drone mission logic & control
+│   └── main.py                # Entry point (threads initialization)
 ```
 
-* `pid_controller.py`: Implements the `StablePID` class for precise centering.
-* `coordinates.py`: Utility functions for pixel-to-GPS conversion and Haversine distance.
-* `detector_node.py`: Contains the `YoloDetector` ROS 2 node class for YOLOv4-tiny inference.
-* `mission_manager.py`: Contains the `DroneMission` class for vehicle connection, geofence, waypoint generation, mission upload, arming, takeoff, and dynamic diversion logic.
-* `main.py`: Entry point to start both the detector thread (ROS 2) and mission thread (DroneKit).
+---
+
+## ⚙️ Configuration
+
+### 📌 Mission Parameters (`mission_manager.py`)
+
+Modify global constants:
+
+```python
+ALTITUDE = 10              # Survey altitude (meters)
+LOW_ALTITUDE = 3          # Target centering altitude
+ZIGZAG_SPACING = 5        # Distance between survey lines
+GEOFENCE_POLYGON = [...]  # List of (lat, lon)
+CONNECTION_STRING = "..." # MAVLink connection
+```
 
 ---
 
+### 📷 Detector Parameters (`detector_node.py`)
 
-## API and Configuration
-
-* **Global Constants**: Located at the top of `mission_manager.py`. You can modify:
-
-  * `ALTITUDE`: Survey altitude (m).
-  * `LOW_ALTITUDE`: Altitude for vision-based centering (m).
-  * `ZIGZAG_SPACING`: Spacing (m) between survey rows.
-  * `GEOFENCE_POLYGON`: List of (lat, lon) tuples defining the survey area.
-  * `CONNECTION_STRING`: MAVLink connection string.
-
-* **YOLODetector Parameters**: In `detector_node.py`, you can adjust:
-
-  * `INPUT_RESOLUTION`: (width, height) for frame resizing.
-  * `FOV`: (horizontal\_FOV, vertical\_FOV) of the camera.
-  * `CONF_THRESHOLD` and `NMS_THRESHOLD` for detection filtering.
-
-* **PID Gains**: Located in `mission_manager.py` when instantiating `StablePID` for `pid_x` and `pid_y`.
+```python
+INPUT_RESOLUTION = (416, 416)
+FOV = (horizontal_fov, vertical_fov)
+CONF_THRESHOLD = 0.5
+NMS_THRESHOLD = 0.4
+```
 
 ---
 
-## License
+### 🎛️ PID Controller Tuning
 
-This project is provided under the MIT License. See `LICENSE` for details.
+Located in `mission_manager.py`:
+
+```python
+pid_x = StablePID(kp, ki, kd)
+pid_y = StablePID(kp, ki, kd)
+```
+
+Tune these gains for:
+
+* Faster response
+* Reduced oscillation
+* Stable centering
+
+---
+
+## 🚀 How It Works
+
+```mermaid
+flowchart TD
+    A[Start Mission] --> B[Generate Survey Path]
+    B --> C[Takeoff & Begin AUTO Mode]
+    C --> D[Run Detection Thread]
+    D --> E{Target Detected?}
+    E -->|No| C
+    E -->|Yes| F[Switch to GUIDED Mode]
+    F --> G[Go to Target]
+    G --> H[Descend]
+    H --> I[PID Centering]
+    I --> J[Hover]
+    J --> K[Ascend]
+    K --> L[Resume AUTO Mission]
+```
+
+---
+
+## 🧠 Technologies Used
+
+* **ROS 2 (Humble)**
+* **DroneKit (MAVLink communication)**
+* **OpenCV DNN**
+* **YOLOv4-tiny**
+* **Python (threading, math, control systems)**
+
+---
+
+## 📦 Installation
+
+```bash
+git clone https://github.com/Humobot1812/Autonomous_drone.git
+cd Autonomous_drone
+
+pip install -r requirements.txt
+```
+
+---
+
+## ▶️ Running the System
+
+```bash
+python src/main.py
+```
+
+Make sure:
+
+* SITL / Drone is running
+* MAVLink connection string is correct
+
+---
+
+## 🛠️ Future Improvements
+
+* Upgrade to **YOLOv8 / TensorRT acceleration**
+* Add **multi-drone coordination**
+* Integrate **SLAM + obstacle avoidance**
+* Improve **target classification robustness**
+* Add **real-time visualization dashboard**
+
+---
+
+## 📜 License
+
+This project is licensed under the **MIT License**.
+See the `LICENSE` file for details.
+
+---
+
