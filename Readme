@@ -8,10 +8,10 @@
 
 This project integrates **computer vision, autonomous navigation, and control systems** to enable a drone to:
 
-- 📡 Perform **autonomous area surveys**
-- 🎯 Detect **targets & hotspots in real time**
-- 🧠 Make **intelligent decisions during flight**
-- 🔁 Dynamically **interrupt and resume missions**
+* 📡 Perform **autonomous area surveys**
+* 🎯 Detect **targets & hotspots in real time**
+* 🧠 Make **intelligent decisions during flight**
+* 🔁 Dynamically **interrupt and resume missions**
 
 ---
 
@@ -38,40 +38,179 @@ Detection Node     PID Controller
 
 ### 🎯 Real-Time Object Detection
 
-- Powered by **YOLOv4-tiny (OpenCV DNN)**
-- Optimized for real-time performance
+* Powered by **YOLOv4-tiny (OpenCV DNN)**
+* Optimized for **real-time performance on edge devices**
 
 **Detection Types:**
 
-- 🎯 Targets  
-  - Interrupt mission  
-  - Descend + PID centering  
-  - Hover → Resume mission  
+* 🎯 **Targets**
 
-- 🔥 Hotspots  
-  - GPS logging  
-  - Duplicate filtering  
+  * Interrupt mission
+  * Descend and perform PID-based centering
+  * Hover for inspection
+  * Resume mission
+
+* 🔥 **Hotspots**
+
+  * GPS coordinates recorded
+  * Duplicate detections filtered
+
+---
+
+### 🌍 Pixel-to-GPS Conversion
+
+* Converts **image pixel coordinates → GPS coordinates**
+* Considers:
+
+  * Drone altitude
+  * Camera field of view (FOV)
+  * Drone heading
+
+---
+
+### 🗺️ Autonomous Survey Planning
+
+* Implements **zigzag (boustrophedon) coverage path**
+* Supports:
+
+  * Custom polygon geofencing
+  * Polygon shrinking (safety margins)
+  * Automatic waypoint generation
+
+---
+
+### 🔁 Dynamic Target Handling
+
+When a target is detected:
+
+1. Switch to **GUIDED mode**
+2. Navigate to the target
+3. Descend to low altitude
+4. Perform **PID-based visual centering**
+5. Hover for inspection
+6. Ascend back
+7. Resume mission (**AUTO mode**)
+
+---
+
+### 🔥 Smart Hotspot Recording
+
+* Uses **Haversine distance filtering**
+* Avoids duplicates (< 0.8 m)
+* Stores:
+
+  * Unique ID
+  * GPS coordinates
+
+---
+
+### 🔒 Thread-Safe Architecture
+
+* Uses `threading.Lock`
+* Ensures safe synchronization between:
+
+  * Detection thread (ROS 2)
+  * Mission control thread (DroneKit)
+
+---
+
+## 📁 Project Structure
+
+```
+Autonomous_drone/
+│
+├── README.md
+├── requirements.txt
+│
+└── src/
+    ├── pid_controller.py      # PID control logic
+    ├── coordinates.py         # GPS & math utilities
+    ├── detector_node.py       # YOLO detection node
+    ├── mission_manager.py     # Mission control logic
+    └── main.py                # Entry point
+```
+
+---
+
+## ⚙️ Configuration
+
+### 📌 Mission Parameters (`mission_manager.py`)
+
+```python
+ALTITUDE = 10              # Survey altitude (meters)
+LOW_ALTITUDE = 3          # Target approach altitude
+ZIGZAG_SPACING = 5        # Path spacing
+GEOFENCE_POLYGON = [...]  # Area boundary
+CONNECTION_STRING = "..." # MAVLink connection
+```
+
+---
+
+### 📷 Detector Settings (`detector_node.py`)
+
+```python
+INPUT_RESOLUTION = (416, 416)
+FOV = (horizontal_fov, vertical_fov)
+CONF_THRESHOLD = 0.5
+NMS_THRESHOLD = 0.4
+```
+
+---
+
+### 🎛️ PID Controller Tuning
+
+```python
+pid_x = StablePID(kp, ki, kd)
+pid_y = StablePID(kp, ki, kd)
+```
+
+Tune for:
+
+* ⚡ Fast response
+* 🎯 Accurate centering
+* 🌀 Minimal oscillations
 
 ---
 
 ## 🚀 Workflow
 
 ```
-Start Mission → Generate Path → AUTO Mode  
-→ Detection Running → Target?  
-→ Yes → GUIDED → Center → Resume  
-→ No → Continue Survey
+Start Mission
+   ↓
+Generate Survey Path
+   ↓
+Takeoff (AUTO Mode)
+   ↓
+Run Detection Thread
+   ↓
+Target Detected?
+   ├── No → Continue Survey
+   └── Yes:
+         ↓
+     Switch to GUIDED
+         ↓
+     Navigate to Target
+         ↓
+     Descend
+         ↓
+     PID Centering
+         ↓
+     Hover
+         ↓
+     Ascend
+         ↓
+     Resume AUTO Mission
 ```
 
 ---
 
 ## 🧠 Technologies Used
 
-- ROS 2 (Humble)  
-- DroneKit (MAVLink)  
-- OpenCV DNN  
-- YOLOv4-tiny  
-- Python  
+* 🤖 ROS 2 (Humble)
+* 🚁 DroneKit (MAVLink communication)
+* 👁️ OpenCV DNN
+* 🎯 YOLOv4-tiny
+* 🐍 Python (threading, control systems)
 
 ---
 
@@ -80,19 +219,46 @@ Start Mission → Generate Path → AUTO Mode
 ```bash
 git clone https://github.com/Humobot1812/Autonomous_drone.git
 cd Autonomous_drone
+
 pip install -r requirements.txt
 ```
 
 ---
 
-## ▶️ Run
+## ▶️ Run the System
 
 ```bash
 python src/main.py
 ```
 
+### ⚠️ Requirements
+
+* SITL or real drone must be running
+* Correct MAVLink connection string
+
+---
+
+## 🛠️ Future Improvements
+
+* 🚀 Upgrade to **YOLOv8 + TensorRT**
+* 🤝 Multi-drone coordination (swarm systems)
+* 🧭 SLAM + obstacle avoidance
+* 📊 Real-time monitoring dashboard
+* 🧠 Improved AI-based classification
+
+---
+
+## 📜 License
+
+This project is licensed under the **MIT License**.
+See the `LICENSE` file for details.
+
 ---
 
 ## 👨‍💻 Author
 
-Abhinav Goel  
+**Abhinav Goel**
+Robotics Engineer | ROS 2 | Autonomous Systems
+
+---
+
